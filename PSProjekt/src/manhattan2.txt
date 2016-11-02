@@ -1,0 +1,45 @@
+/*
+void manhattan2(int image[5][5]){
+
+	for (int i=0; i<5; i++){
+		for (int j=0; j<5; j++){
+			if (image[i][j] == 1){
+				// first pass and pixel was on, it gets a zero
+				image[i][j] = 0;
+			} else {
+				// pixel was off
+				// It is at most the sum of the lengths of the array
+				// away from a pixel that is on
+				image[i][j] = 5 + 5;
+				// or one more than the pixel to the north
+				if (i>0) image[i][j] = min(image[i][j], image[i-1][j]+1);
+				// or one more than the pixel to the west
+				if (j>0) image[i][j] = min(image[i][j], image[i][j-1]+1);
+
+
+			}
+
+		}
+	}
+	// traverse from bottom right to top left
+	for (int i=5-1; i>=0; i--){
+		for (int j=5-1; j>=0; j--){
+			// either what we had on the first pass
+			// or one more than the pixel to the south
+			if (i+1<5) image[i][j] = min(image[i][j], image[i+1][j]+1);
+			// or one more than the pixel to the east
+			if (j+1<5) image[i][j] = min(image[i][j], image[i][j+1]+1);
+
+
+		}
+	}
+
+	//print array
+	for (int i=0; i<5; i++){
+		for (int j=0; j<5; j++){
+			cout << image[i][j] << " ";
+		}
+		cout  << endl ;
+	}
+	cout << endl;
+}*/
