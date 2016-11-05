@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include "opencv2/opencv.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <opencv2/core/core.hpp>
 #include "opencv2/imgcodecs.hpp"
@@ -20,10 +21,9 @@ using namespace cv;
 
 void RgbToHsv(Mat * OrigImage, Mat * HSVImage)
 {
-
+	*HSVImage = OrigImage->clone();
     unsigned char s,v;
     unsigned char rgbMin, rgbMax;
-    *HSVImage = OrigImage->clone();
     for(int i = 0; i < OrigImage->rows * OrigImage->cols * 3; i+=3){
 
     	//finds the minimum value between r,g,b
@@ -33,8 +33,7 @@ void RgbToHsv(Mat * OrigImage, Mat * HSVImage)
 
         v = rgbMax;
         //if color is black
-        if (v == 0)
-        {
+        if (v == 0){
             HSVImage->data[i] = 0;//h
             HSVImage->data[i+1] = 0;//s
             HSVImage->data[i+2] = v;//v
@@ -43,9 +42,7 @@ void RgbToHsv(Mat * OrigImage, Mat * HSVImage)
         //saturation
         //if color is white
         s = 255* long(rgbMax - rgbMin) / v;
-
-        if (s == 0)
-        {
+        if (s == 0){
             HSVImage->data[i] = 0;//h
             HSVImage->data[i+1] = s;//s
             HSVImage->data[i+2] = v;//v
@@ -58,46 +55,24 @@ void RgbToHsv(Mat * OrigImage, Mat * HSVImage)
 			HSVImage->data[i] = (uchar)(85 + 43 * (OrigImage->data[i] - OrigImage->data[i+2]) / (rgbMax - rgbMin));
 		else
 			HSVImage->data[i] = (uchar)(171 + 43 * (OrigImage->data[i+2] - OrigImage->data[i+1]) / (rgbMax - rgbMin));
-
-        HSVImage->data[i+1] = s;//s
-        HSVImage->data[i+2] = v;//v
+        HSVImage->data[i+1] = s;
+        HSVImage->data[i+2] = v;
     }
 
 }
-int mod(int stevilo, int modus){
-	if(stevilo == 0)
-		return 0;
-	if(abs(stevilo) < modus)
-		return modus-abs(stevilo);
-	else
-		return abs(stevilo%modus);
-}
-
+//converts char array to int array
 void imgToIntArray(Mat * image, int * manArray){
-
 	for(int i = 0; i < image->rows*image->cols*3; i++){
 		//cout << "i: "<< i << " data: " << (int)image->data[i] << endl;
 		manArray[i] = (int)image->data[i];
 	}
 }
+
 int * manhattan3(int inRow, int inCol, Mat * image, int * manhattanArray){
 	imgToIntArray(image, manhattanArray);
 
-/*
-	for(int k = 0; k < inRow*inCol*3; k+=3){
-		//cout << "k: "<< (int)k << "| " ;
-		if(k%(inRow*3) == 0)
-			cout << endl ;
-		cout << setfill(' ') << setw(3) << manhattanArray[k] << " ";
-		//cout << (int)image->data[k+1] << " ";
-		//cout << (int)image->data[k+2] << " ";
-    }
-
-    cout << endl<<endl;*/
-
 	for(int i = 0; i < inRow*inCol*3; i+=3){
 		//ce smo najdli bel pixel
-		//cout << "i: "<< (int)i << "data: "<<(int)image->data[i];
 		if(image->data[i] == 255 && image->data[i+1] == 255 && image->data[i+2] == 255){
 			//first pass and pixel was on, it gets a zero
 			manhattanArray[i] = manhattanArray[i+1] = manhattanArray[i+2] =  0;
@@ -139,18 +114,6 @@ int * manhattan3(int inRow, int inCol, Mat * image, int * manhattanArray){
 int * manhattan2(int inRow, int inCol, Mat * image, int * manhattanArray){
 	imgToIntArray(image, manhattanArray);
 
-/*
-	for(int k = 0; k < inRow*inCol*3; k+=3){
-		//cout << "k: "<< (int)k << "| " ;
-		if(k%(inRow*3) == 0)
-			cout << endl ;
-		cout << setfill(' ') << setw(3) << manhattanArray[k] << " ";
-		//cout << (int)image->data[k+1] << " ";
-		//cout << (int)image->data[k+2] << " ";
-    }
-
-    cout << endl<<endl;*/
-
 	for(int i = 0; i < inRow*inCol*3; i+=3){
 		//ce smo najdli bel pixel
 		//cout << "i: "<< (int)i << "data: "<<(int)image->data[i];
@@ -188,15 +151,7 @@ int * manhattan2(int inRow, int inCol, Mat * image, int * manhattanArray){
 			//cout << (int)image->data[i] << " compare "<< (int)image->data[i+3]+1<< endl;
 			manhattanArray[i] = manhattanArray[i+1] = manhattanArray[i+2] = min((int)manhattanArray[i], (int)manhattanArray[i+3]+1);
 		}
-	}/*
-	for(int k = 0; k < inRow*inCol*3; k+=3){
-		//cout << "k: "<< (int)k << "| " ;
-		if(k%(inRow*3) == 0)
-			cout << endl ;
-		cout << setfill(' ') << setw(3) << manhattanArray[k] << " ";
-    }
-
-    cout << endl<<endl;*/
+	}
     return manhattanArray;
 }
 void diliate(Mat * image, int k){
@@ -242,47 +197,74 @@ void imgInRange(Mat * image, int LowH, int LowS, int LowV, int HighH, int HighS,
 		}
 	}
 }
+void calMoments(Mat * image, Mat * origImage){
+	int zerothMoment = 0;
+	for(int i = 0; i < image->rows*image->cols*3; i+=3)
+		if(image->data[i] == 255)
+			zerothMoment += 1;
+	//calulate 10 and 01 moments
+	int moment10 = 0;
+	int moment01 = 0;
+	for(int i = 0; i < image->rows*image->cols*3; i+=3){
+		//cout << i << endl;
+		if(image->data[i] == 255){
+			//cout << "x :" << (i/3)%image->cols << " y: " << (i/3)/ image->cols << endl;
+			moment01+= (i/3)%image->cols;
+			moment10 += (i/3)/image->cols;
+		}
+	}
 
+	int xCor = moment01 / zerothMoment;
+	int yCor= moment10 / zerothMoment;
+
+
+	circle(*origImage, Point(xCor, yCor), 32.0, Scalar( 0, 255, 0 ), 1, 8 );
+}
 int main( int argc, char** argv ){
 /*
   Mat image, HSVimage, imgThresholded;
-  image = imread( "/home/aljaz/Pictures/circle3.png", 1 );
+  image = imread( "/home/aljaz/Pictures/triangle.png", 1 );
 
  int iLowH = 0;
- int iHighH = 0;
- int iLowS = 0;
- int iHighS = 0;
+ int iHighH = 85;
+ int iLowS = 255;
+ int iHighS = 255;
 
  int iLowV = 255;
  int iHighV = 255;
 
-	//cout << image;
-  HSVimage = image.clone();
 
-  //cvtColor(image, HSVimage , COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
-  //cout << HSVimage << endl;
-  RgbToHsv(&image, &HSVimage);
-  imgThresholded = image.clone();
- // inRange(HSVimage, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded);
-
-  imgInRange(&imgThresholded, iLowH, iLowS, iLowV, iHighH, iHighS, iHighV);
-
- // diliate(&imgThresholded, 2);
-  //dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_RECT, Size(5, 5)) );
-  erode(&imgThresholded, 9);
   if((!image.data))
     {
       printf( "No image data \n" );
       return -1;
     }
+  HSVimage = image.clone();
 
-  namedWindow( "Display Image", CV_WINDOW_AUTOSIZE );
-  namedWindow( "Display Image3", CV_WINDOW_AUTOSIZE );
+ //cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+ RgbToHsv(&image, &HSVimage);
+ imgThresholded = HSVimage.clone();
+
+ //inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+ imgInRange(&imgThresholded, iLowH, iLowS, iLowV, iHighH, iHighS, iHighV);
+//morphological opening (remove small objects from the foreground)
+ //dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+ erode(&imgThresholded, 2);
+ diliate(&imgThresholded, 2);
+
+ //morphological closing (fill small holes in the foreground)
+ diliate(&imgThresholded, 2);
+ erode(&imgThresholded, 2);
+
+ calMoments(&imgThresholded, &image);
   //imshow( "Display Image5", imgThresholded);
-  imshow( "Display Image", HSVimage);
-  imshow( "Display Image3", imgThresholded);*/
+  imshow("Thresholded Image", imgThresholded); //show the thresholded image
+  imshow("Original", image); //show the original image
 
-   VideoCapture cap(0); //capture the video from web cam
+	*/
+	//declare Mat image files
+	Mat imgOriginal, imgHSV, imgThresholded ;
+	VideoCapture cap(0); //capture the video from web cam
 
 	if ( !cap.isOpened() )  // if not success, exit program
 	{
@@ -292,64 +274,69 @@ int main( int argc, char** argv ){
 
 	namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 
-  int iLowH = 141;
- int iHighH = 179;
+	int iLowH = 141;
+	int iHighH = 179;
 
-  int iLowS = 14;
- int iHighS = 255;
+	int iLowS = 14;
+	int iHighS = 255;
 
-  int iLowV = 5;
- int iHighV = 255;
+	int iLowV = 5;
+	int iHighV = 255;
 
-  //Create trackbars in "Control" window
- cvCreateTrackbar("LowH", "Control", &iLowH, 179); //Hue (0 - 179)
- cvCreateTrackbar("HighH", "Control", &iHighH, 179);
+	//Create trackbars in "Control" window
+	cvCreateTrackbar("LowH", "Control", &iLowH, 255); //Hue (0 - 255)
+	cvCreateTrackbar("HighH", "Control", &iHighH, 255);
 
-  cvCreateTrackbar("LowS", "Control", &iLowS, 255); //Saturation (0 - 255)
- cvCreateTrackbar("HighS", "Control", &iHighS, 255);
+	cvCreateTrackbar("LowS", "Control", &iLowS, 255); //Saturation (0 - 255)
+	cvCreateTrackbar("HighS", "Control", &iHighS, 255);
 
-  cvCreateTrackbar("LowV", "Control", &iLowV, 255); //Value (0 - 255)
- cvCreateTrackbar("HighV", "Control", &iHighV, 255);
-  while (true)
-  {
-      Mat imgOriginal;
+	cvCreateTrackbar("LowV", "Control", &iLowV, 255); //Value (0 - 255)
+	cvCreateTrackbar("HighV", "Control", &iHighV, 255);
 
-      bool bSuccess = cap.read(imgOriginal); // read a new frame from video
+	while (true)
+	{
 
-       if (!bSuccess) //if not success, break loop
-      {
-           cout << "Cannot read a frame from video stream" << endl;
-           break;
-      }
+		bool bSuccess = cap.read(imgOriginal); // read a new frame from video
 
-  Mat imgHSV = imgOriginal.clone();
+		// If you do not care about backward compatibility
+		// You can use the following instead for OpenCV 3
+		// double fps = video.get(CAP_PROP_FPS);
 
- //vtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
- RgbToHsv(&imgOriginal, &imgHSV);
- Mat imgThresholded = imgHSV.clone();
+		if (!bSuccess) //if not success, break loop
+		{
+		   cout << "Cannot read a frame from video stream" << endl;
+		   break;
+		}
 
- //inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
- imgInRange(&imgThresholded, iLowH, iLowS, iLowV, iHighH, iHighS, iHighV);
-//morphological opening (remove small objects from the foreground)
- erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
- //dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
- erode(&imgThresholded, 2);
- diliate(&imgThresholded, 2);
 
- //morphological closing (fill small holes in the foreground)
-//dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
-//erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
 
- imshow("Thresholded Image", imgThresholded); //show the thresholded image
- imshow("Original", imgOriginal); //show the original image
+		//cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+		RgbToHsv(&imgOriginal, &imgHSV);
 
-      if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
-     {
-          cout << "esc key is pressed by user" << endl;
-          break;
-     }
-  }
-  waitKey(0);
-  return 0;
+		imgThresholded = imgHSV.clone();
+
+		//inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+		imgInRange(&imgThresholded, iLowH, iLowS, iLowV, iHighH, iHighS, iHighV);
+		//morphological opening (remove small objects from the foreground)
+		erode(&imgThresholded, 3);
+		diliate(&imgThresholded, 3);
+
+		//morphological closing (fill small holes in the foreground)
+		diliate(&imgThresholded, 3);
+		erode(&imgThresholded, 3);
+
+		calMoments(&imgThresholded, &imgOriginal);
+
+		imshow("Thresholded Image", imgThresholded); //show the thresholded image
+		imshow("Original", imgOriginal); //show the original image
+
+		if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
+		{
+		  cout << "esc key is pressed by user" << endl;
+		  break;
+		}
+	}
+	waitKey(0);
+	return 0;
 }
 
