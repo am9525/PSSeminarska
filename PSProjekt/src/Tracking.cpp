@@ -68,7 +68,10 @@ void imgToIntArray(Mat * image, int * manArray){
 	}
 }
 
-int * manhattan3(int inRow, int inCol, Mat * image, int * manhattanArray){
+int * diliate(Mat * image, int k){
+	int inRow = image->cols;
+	int inCol = image->rows;
+	int manhattanArray[image->rows*image->cols*3];
 	imgToIntArray(image, manhattanArray);
 
 	for(int i = 0; i < inRow*inCol*3; i+=3){
@@ -95,6 +98,11 @@ int * manhattan3(int inRow, int inCol, Mat * image, int * manhattanArray){
 				manhattanArray[i] = manhattanArray[i+1] = manhattanArray[i+2]  = min((int)manhattanArray[i], (int)manhattanArray[i-3]+1);
 			}
 
+			if(manhattanArray[i] <= k)
+				image->data[i] = image->data[i+1] = image->data[i+2] = 255;
+
+			else
+				image->data[i] = image->data[i+1] = image->data[i+2] = 0;
 		}
 	}
 	for(int i = inRow*inCol*3-3; i >= 0; i-=3){
@@ -107,11 +115,19 @@ int * manhattan3(int inRow, int inCol, Mat * image, int * manhattanArray){
 			//cout << (int)image->data[i] << " compare "<< (int)image->data[i+3]+1<< endl;
 			manhattanArray[i] = manhattanArray[i+1] = manhattanArray[i+2] = min((int)manhattanArray[i], (int)manhattanArray[i+3]+1);
 		}
+		if(manhattanArray[i] <= k)
+			image->data[i] = image->data[i+1] = image->data[i+2] = 255;
+
+		else
+			image->data[i] = image->data[i+1] = image->data[i+2] = 0;
 	}
 
     return manhattanArray;
 }
-int * manhattan2(int inRow, int inCol, Mat * image, int * manhattanArray){
+int * erode(Mat * image, int k){
+	int inRow = image->cols;
+	int inCol = image->rows;
+	int manhattanArray[image->rows*image->cols*3];
 	imgToIntArray(image, manhattanArray);
 
 	for(int i = 0; i < inRow*inCol*3; i+=3){
@@ -138,7 +154,11 @@ int * manhattan2(int inRow, int inCol, Mat * image, int * manhattanArray){
 			if(i%(inRow*3)){
 				manhattanArray[i] = manhattanArray[i+1] = manhattanArray[i+2]  = min((int)manhattanArray[i], (int)manhattanArray[i-3]+1);
 			}
+			if(manhattanArray[i] <= k)
+				image->data[i] = image->data[i+1] = image->data[i+2] = 0;
 
+			else
+				image->data[i] = image->data[i+1] = image->data[i+2] = 255;
 		}
 	}
 	for(int i = inRow*inCol*3-3; i >= 0; i-=3){
@@ -151,36 +171,14 @@ int * manhattan2(int inRow, int inCol, Mat * image, int * manhattanArray){
 			//cout << (int)image->data[i] << " compare "<< (int)image->data[i+3]+1<< endl;
 			manhattanArray[i] = manhattanArray[i+1] = manhattanArray[i+2] = min((int)manhattanArray[i], (int)manhattanArray[i+3]+1);
 		}
+		if(manhattanArray[i] <= k)
+			image->data[i] = image->data[i+1] = image->data[i+2] = 0;
+		else
+			image->data[i] = image->data[i+1] = image->data[i+2] = 255;
 	}
     return manhattanArray;
 }
-void diliate(Mat * image, int k){
 
-	int manhattanArray[image->rows*image->cols*3];
-
-	manhattan3(image->cols, image->rows, image, manhattanArray);
-	for(int i = 0; i < image->rows*image->cols*3; i++){
-		if(manhattanArray[i] <= k){
-			image->data[i] = 255;
-		}
-		else{
-			image->data[i] = 0;
-
-		}
-	}
-}
-void erode(Mat * image, int k){
-
-	int manhattanArray[image->rows*image->cols*3];
-	manhattan2(image->cols, image->rows, image, manhattanArray);
-	for(int i = 0; i < image->rows*image->cols*3; i++){
-		if(manhattanArray[i] <= k)
-			image->data[i] = 0;
-		else
-			image->data[i] = 255;
-	}
-
-}
 void imgInRange(Mat * image, int LowH, int LowS, int LowV, int HighH, int HighS, int HighV){
     //cout << "helo"<< endl;
 	for(int i = 0; i < image->rows*image->cols*3; i+=3){
@@ -213,55 +211,57 @@ void calMoments(Mat * image, Mat * origImage){
 			moment10 += (i/3)/image->cols;
 		}
 	}
+	if(zerothMoment > 1000){
+		int xCor = moment01 / zerothMoment;
+		int yCor= moment10 / zerothMoment;
+		circle(*origImage, Point(xCor, yCor), 32.0, Scalar( 0, 255, 0 ), 1, 8 );
+	}
 
-	int xCor = moment01 / zerothMoment;
-	int yCor= moment10 / zerothMoment;
 
 
-	circle(*origImage, Point(xCor, yCor), 32.0, Scalar( 0, 255, 0 ), 1, 8 );
 }
 int main( int argc, char** argv ){
 /*
-  Mat image, HSVimage, imgThresholded;
-  image = imread( "/home/aljaz/Pictures/triangle.png", 1 );
+	Mat image, HSVimage, imgThresholded;
+	image = imread( "/home/aljaz/Pictures/triangle.png", 1 );
 
- int iLowH = 0;
- int iHighH = 85;
- int iLowS = 255;
- int iHighS = 255;
+	int iLowH = 0;
+	int iHighH = 85;
+	int iLowS = 255;
+	int iHighS = 255;
 
- int iLowV = 255;
- int iHighV = 255;
+	int iLowV = 255;
+	int iHighV = 255;
 
 
-  if((!image.data))
-    {
-      printf( "No image data \n" );
-      return -1;
-    }
-  HSVimage = image.clone();
+	if((!image.data)){
+	  printf( "No image data \n" );
+	  return -1;
+	}
+	HSVimage = image.clone();
 
- //cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
- RgbToHsv(&image, &HSVimage);
- imgThresholded = HSVimage.clone();
+	//cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+	RgbToHsv(&image, &HSVimage);
+	imgThresholded = HSVimage.clone();
 
- //inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
- imgInRange(&imgThresholded, iLowH, iLowS, iLowV, iHighH, iHighS, iHighV);
-//morphological opening (remove small objects from the foreground)
- //dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
- erode(&imgThresholded, 2);
- diliate(&imgThresholded, 2);
+	//inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+	imgInRange(&imgThresholded, iLowH, iLowS, iLowV, iHighH, iHighS, iHighV);
+	//morphological opening (remove small objects from the foreground)
+	//dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+	erode(&imgThresholded, 10);
+	diliate(&imgThresholded, 20);
 
- //morphological closing (fill small holes in the foreground)
- diliate(&imgThresholded, 2);
- erode(&imgThresholded, 2);
+	//morphological closing (fill small holes in the foreground)
+	diliate(&imgThresholded, 2);
+	erode(&imgThresholded, 2);
 
- calMoments(&imgThresholded, &image);
-  //imshow( "Display Image5", imgThresholded);
-  imshow("Thresholded Image", imgThresholded); //show the thresholded image
-  imshow("Original", image); //show the original image
+	calMoments(&imgThresholded, &image);
+	//imshow( "Display Image5", imgThresholded);
+	imshow("Thresholded Image", imgThresholded); //show the thresholded image
+	imshow("Original", image); //show the original image
 
-	*/
+*/
+
 	//declare Mat image files
 	Mat imgOriginal, imgHSV, imgThresholded ;
 	VideoCapture cap(0); //capture the video from web cam
